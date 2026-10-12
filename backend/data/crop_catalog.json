@@ -1,0 +1,48 @@
+
+[
+  {
+    "id": "maize",
+    "name": "Maize",
+    "seasons": ["Kharif", "Rabi"],
+    "temperature_min": 18,
+    "temperature_max": 30,
+    "rainfall_min": 400,
+    "rainfall_max": 800
+  },
+  {
+    "id": "soybean",
+    "name": "Soybean",
+    "seasons": ["Kharif"],
+    "temperature_min": 20,
+    "temperature_max": 30,
+    "rainfall_min": 450,
+    "rainfall_max": 800
+  },
+  {
+    "id": "wheat",
+    "name": "Wheat",
+    "seasons": ["Rabi"],
+    "temperature_min": 10,
+    "temperature_max": 25,
+    "rainfall_min": 300,
+    "rainfall_max": 750
+  },
+  {
+    "id": "chickpea",
+    "name": "Chickpea",
+    "seasons": ["Rabi"],
+    "temperature_min": 15,
+    "temperature_max": 30,
+    "rainfall_min": 300,
+    "rainfall_max": 650
+  },
+  {
+    "id": "rice",
+    "name": "Rice",
+    "seasons": ["Kharif"],
+    "temperature_min": 20,
+    "temperature_max": 35,
+    "rainfall_min": 1000,
+    "rainfall_max": 2000
+  }
+]
