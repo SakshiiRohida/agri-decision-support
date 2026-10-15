@@ -1,13 +1,21 @@
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
+
 from app.weather_service import get_weather
-from app.crop_engine import load_crops, recommend_crops
+from app.crop_engine import (
+    load_crops,
+    recommend_crops,
+    recommend_from_weather,
+    build_weather_advisories,
+)
+
 
 app = FastAPI(
     title="Agri Decision Support API",
-    description="Seasonal crop suitability and decision support",
-    version="0.2.0",
+    description="Weather-based crop recommendations and "
+                "agricultural decision support",
+    version="0.3.0",
 )
 
 
@@ -53,10 +61,12 @@ def get_recommendations(request: RecommendationRequest):
         "season": request.season,
         "results": results,
         "notice": (
-            "Prototype results based on illustrative data; "
-            "not validated agricultural advice."
+            "Prototype results use illustrative catalogue "
+            "ranges. They are not validated agricultural advice."
         ),
     }
+
+
 @app.get("/weather")
 async def weather(latitude: float, longitude: float):
     try:
@@ -66,7 +76,6 @@ async def weather(latitude: float, longitude: float):
             status_code=502,
             detail="Weather service is currently unavailable.",
         )
-
 
 
 @app.get("/recommend-by-location")
@@ -79,7 +88,6 @@ async def recommend_by_location(
         "Monsoon": "Kharif",
         "Winter": "Rabi",
         "Summer": "Zaid",
-        # Continue accepting the original names for testing.
         "Kharif": "Kharif",
         "Rabi": "Rabi",
         "Zaid": "Zaid",
@@ -88,7 +96,10 @@ async def recommend_by_location(
     if season not in season_mapping:
         raise HTTPException(
             status_code=400,
-            detail="Season must be Monsoon, Winter, or Summer.",
+            detail=(
+                "Season must be Monsoon, Winter, Summer, "
+                "Kharif, Rabi, or Zaid."
+            ),
         )
 
     try:
@@ -111,11 +122,16 @@ async def recommend_by_location(
 
     internal_season = season_mapping[season]
 
-    results = recommend_crops(
-        season=internal_season,
-        temperature=temperature,
-        rainfall=None,
-    )
+    try:
+        results = recommend_from_weather(
+            season=internal_season,
+            weather_data=weather_data,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=str(exc),
+        )
 
     return {
         "location": weather_data["location"],
@@ -126,18 +142,34 @@ async def recommend_by_location(
             "humidity_percent": current.get(
                 "relative_humidity_2m"
             ),
+            "apparent_temperature_c": current.get(
+                "apparent_temperature"
+            ),
+            "current_rain_mm": current.get("rain"),
+            "wind_speed_kmh": current.get("wind_speed_10m"),
             "forecast_rainfall_mm": daily.get(
                 "precipitation_sum", []
             ),
+            "forecast_rain_probability_percent": daily.get(
+                "precipitation_probability_max", []
+            ),
             "forecast_days": daily.get("time", []),
         },
+        "weather_advisories": build_weather_advisories(
+            weather_data
+        ),
         "top_recommendation": results[0] if results else None,
         "alternatives": results[1:],
+        "ranking_method": (
+            "Preliminary temperature-range heuristic using "
+            "current and forecast temperatures and a season filter. "
+            "It does not use the trained Random Forest model."
+        ),
         "notice": (
-            "Prototype ranking based on current temperature "
-            "and an illustrative crop catalogue. Rainfall, soil, "
-            "water availability and regional crop calendars still "
-            "need validation."
+            "The crop catalogue contains illustrative ranges. "
+            "Soil nutrients, soil pH, irrigation, seasonal rainfall "
+            "suitability and regional crop calendars have not been "
+            "validated. These suggestions are experimental and "
+            "should not be treated as farming advice."
         ),
     }
-
